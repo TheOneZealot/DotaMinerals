@@ -1,0 +1,35 @@
+"minerals_ability_mineral_gold"
+{
+	"BaseClass"             		"ability_datadriven"
+	"AbilityTextureName"			"alchemist_goblins_greed"
+	"MaxLevel" 						"1"
+	"AbilityBehavior"				"DOTA_ABILITY_BEHAVIOR_PASSIVE"
+
+	"Modifiers"
+	{
+		"minerals_modifier_mineral"
+		{
+			"Passive"			"1"
+			"IsHidden"			"0"
+			"IsDebuff"			"0"
+	
+			"EffectName"		"particle_name"
+			"EffectAttachType"	"follow_origin"
+
+			"States"
+			{
+				"MODIFIER_STATE_NO_HEALTH_BAR"		"MODIFIER_STATE_VALUE_ENABLED"
+				"MODIFIER_STATE_MAGIC_IMMUNE"		"MODIFIER_STATE_VALUE_ENABLED"
+			}
+
+			"OnCreated"
+			{
+				"RunScript"
+				{
+					"ScriptFile"	"mineral.lua"
+					"Function"		"OnCreated"
+				}
+			}
+		}
+	}
+}

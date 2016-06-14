@@ -1,0 +1,18 @@
+"AddonInfo"
+{
+  "TeamCount" "1"
+  "maps"      "minerals_default"
+  "IsPlayable"  "1"
+  "minerals_default"
+  {
+    "MaxPlayers"    "10"
+  }
+//  "desert_duo"
+//  {
+//          "MaxPlayers"                    "10"
+//  }
+//  "forest_solo"
+//  {
+//          "MaxPlayers"                    "10"
+//  }
+}
