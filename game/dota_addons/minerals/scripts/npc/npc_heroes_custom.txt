@@ -7,12 +7,12 @@
 	    "SoundSet"          "0"
 	
 		"AbilityLayout"     "6"
-	    "Ability1"        "minerals_build_turret" 
-	    "Ability2"        "minerals_build_base" 
-	    "Ability3"        "" 
-	    "Ability4"        ""
-	    "Ability5"        ""
-	    "Ability6"        ""
+	    "Ability1"        "minerals_build_wall" 
+	    "Ability2"        "minerals_build_turret" 
+	    "Ability3"        "minerals_build_generator" 
+	    "Ability4"        "minerals_build_healer"
+	    "Ability5"        "minerals_build_base"
+	    "Ability6"        "minerals_ability_mine"
 	    "Ability7"        ""
 	    "Ability8"        ""
 	    "Ability9"        ""
@@ -45,7 +45,7 @@
 	    "BountyGoldMin"       "0"                   // Gold earned min.
 	    "BountyGoldMax"       "0"                   // Gold earned max.
 	
-	    "BoundsHullName"        "DOTA_HULL_SIZE_REGULAR"
+	    "BoundsHullName"        "DOTA_HULL_SIZE_SMALL"
 	    "MovementCapabilities"    "DOTA_UNIT_CAP_MOVE_GROUND"
 	    "MovementSpeed"       "522"                 // Speed.
 	    "MovementTurnRate"      "1.0"                 // Turning rate.

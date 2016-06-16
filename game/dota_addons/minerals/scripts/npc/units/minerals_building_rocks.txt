@@ -3,7 +3,7 @@
 	// Visual
     //-----------------------------
     "Model"           			"models/props_rock/riveredge_rock006a.vmdl"
-    "ModelScale"                "0.7"
+    "ModelScale"                "0.6"
     "ModelRotation"             "90"
     "DestructionEffect"         "particles/radiant_fx/tower_good3_dest_lvl3_hit.vpcf"
     "HealthBarOffset"           "140"
@@ -29,7 +29,7 @@
 
     // General
     //-----------------------------
-    "BaseClass"                 "npc_dota_creature"
+    "BaseClass"                 "npc_dota_building"
     "ArmorPhysical"             "0"
     "MagicalResistance"         "0"
     "BoundsHullName"            "DOTA_HULL_SIZE_BUILDING"

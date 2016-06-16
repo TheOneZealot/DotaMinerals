@@ -40,6 +40,7 @@ function BuildingHelper:Init()
     CustomGameEventManager:RegisterListener("building_helper_build_command", Dynamic_Wrap(BuildingHelper, "BuildCommand"))
     CustomGameEventManager:RegisterListener("building_helper_cancel_command", Dynamic_Wrap(BuildingHelper, "CancelCommand"))
     CustomGameEventManager:RegisterListener("building_helper_repair_command", Dynamic_Wrap(BuildingHelper, "RepairCommand"))
+    CustomGameEventManager:RegisterListener("building_helper_mine_command", Dynamic_Wrap(BuildingHelper, "MineCommand"))
     CustomGameEventManager:RegisterListener("selection_update", Dynamic_Wrap(BuildingHelper, 'OnSelectionUpdate')) --Hook selection library
     CustomGameEventManager:RegisterListener("gnv_request", Dynamic_Wrap(BuildingHelper, "SendGNV"))
 
@@ -54,6 +55,7 @@ function BuildingHelper:Init()
     if BuildingHelper.Settings["REPAIR_PATH"] then
         require(BuildingHelper.Settings["REPAIR_PATH"])
     end
+    require("mine")
 
     -- Lua Modifiers
     LinkLuaModifier("modifier_out_of_world", "libraries/modifiers/modifier_out_of_world", LUA_MODIFIER_MOTION_NONE)
@@ -424,6 +426,29 @@ function BuildingHelper:CancelCommand(args)
         local unit = EntIndexToHScript(entityIndex)
         if IsBuilder(unit) then
             BuildingHelper:ClearQueue(unit)
+        end
+    end
+end
+
+-- Mine implemented by me
+function BuildingHelper:MineCommand( args )
+    print("[Minerals] MineCommand")
+    local playerID = args.PlayerID
+    local building = EntIndexToHScript(args.targetIndex)
+    local selectedEntities = PlayerResource:GetSelectedEntities(playerID)
+    local queue = tobool(args.queue)
+
+    for _,entityIndex in pairs(selectedEntities) do
+        local unit = EntIndexToHScript(entityIndex)
+
+        if IsBuilder(unit) then
+            -- Cancel current action
+            if not queue then
+                ExecuteOrderFromTable({UnitIndex = entityIndex, OrderType = DOTA_UNIT_ORDER_STOP, Queue = false}) 
+            end
+
+            -- Repair added to the queue
+            BuildingHelper:AddMineToQueue(unit, building, queue)
         end
     end
 end
@@ -1310,6 +1335,35 @@ function BuildingHelper:StartBuilding(builder)
 end
 
 --[[
+    StartMine
+    * Starts the mine process when the builder is on range of the target
+]]--
+function BuildingHelper:StartMine( builder, target )
+    local work = builder.work
+
+    self:OnMineStarted(builder, target)
+
+    target.unit_mining = builder
+    builder.mine_target = target
+
+    builder.state = "mining"
+
+    if not target.mineTimer then
+        target.mineTimer = Timers:CreateTimer(function()
+            if target.unit_mining == nil then
+                self:CancelMine(target)
+            end
+
+            local speed = target.unit_mining.upgrades.gold.speed
+            local interval = 1 / (speed + 1)
+
+            self:OnMineTick(target)
+            return interval
+        end)
+    end
+end
+
+--[[
       StartRepair
       * Starts the repair process when the builder is on range of the target
 ]]--
@@ -1517,6 +1571,10 @@ function BuildingHelper:GetNumBuildersRepairing(target)
         end
     end
     return numReparing
+end
+
+function BuildingHelper:CancelMine( building )
+    building.mineTimer = nil
 end
 
 function BuildingHelper:CancelRepair(building)
@@ -2046,6 +2104,48 @@ function BuildingHelper:AddToQueue(builder, location, bQueued)
 end
 
 --[[
+    AddMineToQueue -- Mine implemented by me
+    * Adds a mine to the builders work queue
+    * bQueued will be true if the command was done with shift pressed
+    * If bQueued is false, the queue is cleared and this mine is put on top
+]]--
+function BuildingHelper:AddMineToQueue( builder, building, bQueued )
+    local bResult = self:OnPreMine(builder, building)
+    if bResult == false then return end
+
+    local playerID = builder:GetMainControllingPlayer()
+    local player = PlayerResource:GetPlayer(playerID)
+    local playerTable = BuildingHelper:GetPlayerTable(playerID)
+    local buildingName = building:GetUnitName()
+    local buildingTable = playerTable.activeBuildingTable
+    local callbacks = playerTable.activeCallbacks
+
+    BuildingHelper:print("AddMineToQueue "..builder:GetUnitName().." "..builder:GetEntityIndex().." -> building "..building:GetUnitName())
+    
+    -- Make the new work entry
+    local work = {["building"] = building, ["name"] = buildingName, ["buildingTable"] = buildingTable, ["callbacks"] = callbacks, mine = true}
+
+    -- If the ability wasn't queued, override the building queue
+    if not bQueued then
+        BuildingHelper:ClearQueue(builder)
+    end
+
+    -- Add this to the builder queue
+    table.insert(builder.buildingQueue, work)
+
+    -- If the builder doesn't have a current work, start the queue
+    -- Extra check for builder-inside behaviour, those abilities are always queued
+    if builder.work == nil and not builder:HasModifier("modifier_builder_hidden") and not (builder.state == "repairing" or builder.state == "moving_to_repair") then
+        builder.work = builder.buildingQueue[1]
+        BuildingHelper:print("Builder doesn't have work to do, start moving to mine right away")
+        BuildingHelper:AdvanceQueue(builder)
+    else
+        BuildingHelper:print("Mine Work was queued, builder already has work to do")
+        BuildingHelper:PrintQueue(builder)
+    end
+end
+
+--[[
     AddRepairToQueue
     * Adds a repair to the builders work queue
     * bQueued will be true if the command was done with shift pressed
@@ -2104,8 +2204,37 @@ function BuildingHelper:AdvanceQueue(builder)
         if work.building then
             -- Repair Queued
             if not IsValidEntity(work.building) or not work.building:IsAlive() then
-                self:print("Queued Repair "..work.name.." but it was removed, continue with the queue")
-                self:AdvanceQueue(builder)                
+                self:print("Queued Mine "..work.name.." but it was removed, continue with the queue")
+                self:AdvanceQueue(builder)
+            elseif work.mine then -- Mine implemeted by me
+                local building = work.building
+                local callbacks = work.callbacks
+                local castRange = builder:GetFollowRange(building)
+                if building.repair_distance then castRange = math.max(building.repair_distance, castRange) end
+                builder.work = work
+                builder.mine_target = building
+                builder.state = "moving_to_mine"
+
+                self:print("AdvanceQueue: Mine "..work.name.." "..work.building:GetEntityIndex())
+
+                -- Move towards the building until close range
+                ExecuteOrderFromTable({UnitIndex = builder:GetEntityIndex(), OrderType = DOTA_UNIT_ORDER_MOVE_TO_TARGET, TargetIndex = building:GetEntityIndex(), Queue = false}) 
+                builder.move_to_build_timer = Timers:CreateTimer(function()
+                    if not IsValidEntity(builder) or not builder:IsAlive() then return end -- End if killed
+                    if not IsValidEntity(building) or not building:IsAlive() then return end -- End if killed
+                    
+                    local distance = (building:GetAbsOrigin() - builder:GetAbsOrigin()):Length()
+                    if distance > castRange then
+                        return 0.03
+                    else
+                        self:print("Reached building, start the Mine process!")
+                        --builder:Stop()
+                        
+                        builder.repairRange = castRange
+                        BuildingHelper:StartMine(builder, building)
+                        return
+                    end
+                end)
             else
                 local building = work.building
                 local callbacks = work.callbacks
@@ -2195,6 +2324,15 @@ function BuildingHelper:ClearQueue(builder)
     -- Clear movement
     if builder.move_to_build_timer then Timers:RemoveTimer(builder.move_to_build_timer) end
 
+    -- Clear mine
+    if builder.mine_target then
+        local target = builder.mine_target
+        target.unit_mining = nil
+        self:print("Builder stopped mining")
+        builder.miner_target = nil
+        self:OnMineCancelled(builder, target)
+    end
+
     -- Clear repair
     if builder.repair_target then
         local target = builder.repair_target
@@ -2247,7 +2385,7 @@ function BuildingHelper:ClearQueue(builder)
         end
         table.remove(builder.buildingQueue, 1)
 
-        if work.name and work.callbacks.onConstructionCancelled then
+        if work.name and work.callbacks and work.callbacks.onConstructionCancelled then
             work.callbacks.onConstructionCancelled(work)
         end
     end

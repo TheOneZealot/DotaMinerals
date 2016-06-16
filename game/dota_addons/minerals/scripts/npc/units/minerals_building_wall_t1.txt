@@ -2,7 +2,7 @@
 {
 	// Visual
     //-----------------------------
-    "Model"           			"models/props_structures/temple_statue002.vmdl"
+    "Model"           			"models/props_structures/obelisk001b.vmdl"
     "ModelScale"                "2"
     "ModelRotation"             "0"
     "DestructionEffect"         "particles/radiant_fx/tower_good3_dest_lvl3_hit.vpcf"

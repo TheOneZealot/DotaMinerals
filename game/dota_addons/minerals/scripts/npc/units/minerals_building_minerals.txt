@@ -30,7 +30,8 @@
 
     // General
     //-----------------------------
-    "BaseClass"                 "npc_dota_creature"
+    "BaseClass"                 "npc_dota_building"
+    "UnitLabel"                 "mineral"
     "ArmorPhysical"             "0"
     "MagicalResistance"         "0"
     "BoundsHullName"            "DOTA_HULL_SIZE_BUILDING"

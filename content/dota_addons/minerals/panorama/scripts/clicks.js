@@ -36,6 +36,12 @@ function OnRightButtonPressed()
         // Cancel BH
         if (!pressedShift) SendCancelCommand()
 
+        // Mine rightclick
+        if (IsCustomBuilding(targetIndex) && !IsAlliedUnit(targetIndex, mainSelected) && Entities.GetUnitLabel(targetIndex) == "mineral") {
+            GameEvents.SendCustomGameEventToServer("building_helper_mine_command", {targetIndex: targetIndex, queue: pressedShift})
+            return true
+        }
+
         // Repair rightclick
         if (right_click_repair && IsCustomBuilding(targetIndex) && Entities.GetHealthPercent(targetIndex) < 100 && IsAlliedUnit(targetIndex, mainSelected)) {
             GameEvents.SendCustomGameEventToServer( "building_helper_repair_command", {targetIndex: targetIndex, queue: pressedShift})

@@ -6,12 +6,13 @@
     "MaxLevel"                      "1"
     
     "Building"                      "1"
-    "BuildTime"						"5.0"
+    "BuildTime"						"1.0"
     "AbilityCastRange"              "250"
     "Scale"                         "1"
     "PlayerCanControl"              "1"
 
     "UnitName"                      "minerals_building_turret_t1"
+    
     "OnSpellStart"
     {
         "RunScript"

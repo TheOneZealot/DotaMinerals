@@ -5,6 +5,11 @@ MINERALS_VERSION = "1.00"
 -- You can also change the cvar 'minerals_spew' at any time to 1 or 0 for output/no output
 MINERALS_DEBUG_SPEW = true 
 
+local gridX = 64
+local gridY = 64
+local chanceToStartAlive = 0.5
+local chanceToBeMineral = 0.1
+
 if Minerals == nil then
     DebugPrint( '[MINERALS] creating minerals game mode' )
     _G.Minerals = class({})
@@ -97,13 +102,10 @@ function Minerals:OnAllPlayersLoaded()
   BuildingHelper:PlaceBuilding(-1, "minerals_building_spawner", spawnerStart:GetAbsOrigin(), nil, nil, nil, DOTA_TEAM_BADGUYS)
 
   -- Generate rocks
-  local gridX = 64
-  local gridY = 64
-  local chanceToStartAlive = 0.5
-  local chanceToBeMineral = 0.1
   for y=1, gridY do
     for x=1, gridX do
-      if math.random() < chanceToStartAlive then
+      local chanceAlive = chanceToStartAlive * Minerals:SpawnMask(x, y)
+      if math.random() < chanceAlive then
         local worldPos = {x = (x - math.ceil(gridX / 2)) * 64, y = (y - math.ceil(gridY / 2)) * 64, z = 128}
         if not BuildingHelper:IsAreaBlocked(2, worldPos) then
           local unitName = "minerals_building_rocks"
@@ -113,12 +115,33 @@ function Minerals:OnAllPlayersLoaded()
             abilName = "minerals_ability_mineral_gold"
           end
           local building = BuildingHelper:PlaceBuilding(-1, unitName, worldPos, nil, nil, nil, DOTA_TEAM_NEUTRALS)
+          if unitName == "minerals_building_rocks" then
+            building:RemoveModifierByName("modifier_invulnerable")
+          end
           local abil = building:AddAbility(abilName)
           abil:SetLevel(1)
         end
       end
     end
   end
+end
+
+function Minerals:SpawnMask( x, y )
+  local halfX = gridX / 2
+  local halfY = gridY / 2
+  local falloff = 12
+  if x > halfX - 3 and x < halfX + 3 then
+    return 0
+  end
+  if y > halfY - 3 and y < halfY + 3 then
+    return 0
+  end
+  local vector = {x = halfX - x, y = halfY - y}
+  local distance = math.sqrt(vector.x ^ 2 + vector.y ^ 2)
+  if distance < falloff then
+    return 0
+  end
+  return 1
 end
 
 --[[
@@ -152,6 +175,7 @@ function Minerals:OnHeroInGame(hero)
     end
   end
   hero:SetAbilityPoints(0)
+  BuildingHelper:InitializeBuilder(hero)
 end
 
 --[[
@@ -179,6 +203,7 @@ function Minerals:InitMinerals()
 
   -- Commands can be registered for debugging purposes or as functions that can be called by the custom Scaleform UI
   Convars:RegisterCommand( "command_example", Dynamic_Wrap(Minerals, 'ExampleConsoleCommand'), "A console command example", FCVAR_CHEAT )
+  Convars:RegisterCommand("minerals_set_upgrade", Dynamic_Wrap(Minerals, "SetUpgrade"), "Set the specified upgrade for player", FCVAR_CHEAT)
 
   DebugPrint('[MINERALS] Done loading Minerals minerals!\n\n')
 end
@@ -196,4 +221,13 @@ function Minerals:ExampleConsoleCommand()
   end
 
   print( '*********************************************' )
+end
+
+function Minerals:SetUpgrade( resource, upgrade, level )
+  local cmdPlayer = Convars:GetCommandClient()
+  if cmdPlayer then
+    local hero = cmdPlayer:GetAssignedHero()
+    hero.upgrades[resource][upgrade] = tonumber(level)
+    print("Resource: "..resource, "Upgrade: "..upgrade, "Level: "..level)
+  end
 end

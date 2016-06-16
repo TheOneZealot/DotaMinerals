@@ -204,6 +204,12 @@ function Minerals:OnPlayerPickHero(keys)
   local heroClass = keys.hero
   local heroEntity = EntIndexToHScript(keys.heroindex)
   local player = EntIndexToHScript(keys.player)
+
+  -- Setup upgrades
+  local emptyUpgrades = {speed = 0, amount = 0}
+  heroEntity.upgrades = {
+    gold = emptyUpgrades,
+  }
 end
 
 -- A player killed another player in a multi-team context
